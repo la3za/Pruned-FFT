@@ -1,0 +1,105 @@
+c
+c **********************************************************************
+c
+      subroutine prninp(m,zr,isign,kinit,kband)
+c
+c Algorithm that takes the input array 'zr' of size N=2**m 
+c with 'kband' non-zero values starting from index 'kinit' 
+c and forward ('isign = 1') or inverse ('isign = -1') Fourier transforms it.
+c The N output samples are found in 'zr'
+c
+c Number of complex multiplications is (N/2)log(2) kband
+c rather than                          (N/2)log(2) N
+c
+c Written by:
+c Sverre Holm, Informasjonskontroll a.s, Asker, NORWAY
+c ref:
+c S. Holm, "FFT Pruning Applied to Time Domain Interpolation and
+c Peak Localization", IEEE Trans. Acoust.,Speech, Sign. Proc.,
+c vol ASSP-35, pp. 1776-1778, Dec. 1987
+c
+c Transposed version of:
+c K.Nagai,"Pruning the Decimatation-in-Time FFT Algorithm with Frequency
+c Shift", IEEE Trans. Acoust.,Speech, Sign. Proc., vol ASSP-34, Aug 1986
+c
+c 2**m   : total number of data
+c zr()   : input and output data; (complex)
+c isign  :  1 for forward transform; exp(-jG)
+c          -1 for inverse transform; exp(+jG)
+c kinit  : index of the lowest non-zero input sample
+c kband  : number of non-zero input samples
+c
+      complex zr(1), cdata
+      n = 2**m
+      nrep = n
+      arg0 = 8.*atan(1.0)
+      if (isign.eq.1) arg0 = -arg0
+c
+      do 110 i = 1, m
+          nbtf = nrep/2
+          arg = arg0/float(nrep)
+c
+c              -- pruning --
+          do 100 j = 1, min0(nbtf,kband)
+c
+c              -- frequency shift --
+              twf = arg*float(j-1+kinit)
+              c = cos(twf)
+              s = sin(twf)
+                  do 100 k = j,n,nrep
+                      j2 = k+nbtf
+                      cdata = zr(k)+zr(j2)
+                      zr(j2) = (zr(k)-zr(j2))*cmplx(c,s)
+                      zr(k)  = cdata
+ 100      continue
+          nrep=nbtf
+ 110  continue
+      if (isign.eq.-1) then
+          do 200 j = 1, n
+              zr(j) = zr(j)/n
+ 200      continue
+      endif
+      call revbits(zr,m,n)
+      return
+      end
+c
+c *********************************************************************
+c
+      subroutine revbits(data,mexp,n)
+c
+c subroutine for in-place bit-reversal
+c
+      complex data(1), temp
+c
+c from IEEE Prog's for DSP ch 1.1
+c
+c This section puts data in bit-reversed order
+c
+      j = 1
+      do 80 i = 1, n
+c
+c At this point, i and j are a bit reversed pair (except for the
+c displacement of +1)
+c
+          if (i-j) 30, 40, 40
+c
+c Exchange data(i) with data(j) if i.lt.j
+c
+ 30       temp = data(j)
+          data(j) = data(i)
+          data(i) = temp
+c
+c implement j=j+1, bit-reversed counter
+c
+ 40       m = n/2
+ 50       if (j-m) 70, 70, 60
+ 60       j = j - m
+          m = (m+1)/2
+          go to 50
+ 70       j = j + m
+ 80   continue
+      return
+      end
+c
+c **********************************************************************
+c
