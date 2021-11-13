@@ -1,4 +1,4 @@
-# Pruned-FFT
+# Pruned FFT
 Fast Fourier Transform code (forward and inverse) for a pruned input sequence
 
 Algorithm that takes the input array 'zr' of size N=2**m 
